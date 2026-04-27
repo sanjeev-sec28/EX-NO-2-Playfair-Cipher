@@ -1,12 +1,8 @@
-## EX. NO:2 IMPLEMENTATION OF PLAYFAIR CIPHER
+## EX.NO:2—IMPLEMENTATION OF PLAYFAIR CIPHER
 
  
 
 ## AIM:
- 
-
- 
-
 To write a C program to implement the Playfair Substitution technique.
 
 ## DESCRIPTION:
@@ -34,10 +30,273 @@ STEP-5: Display the obtained cipher text.
 
 
 
-Program:
+## Program:
+```c
+#include <stdio.h>
+#include <string.h>
+#include <ctype.h>
+#include <stdbool.h>
+
+#define SIZE 5
+
+// Function prototypes
+void prepareText(char *text, char *prepared);
+void generateKeyTable(char *key, char keyTable[SIZE][SIZE]);
+void findPosition(char keyTable[SIZE][SIZE], char ch, int *row, int *col);
+void encryptPair(char keyTable[SIZE][SIZE], char a, char b, char *encrypted);
+void decryptPair(char keyTable[SIZE][SIZE], char a, char b, char *decrypted);
+void encrypt(char *plaintext, char *ciphertext, char keyTable[SIZE][SIZE]);
+void decrypt(char *ciphertext, char *plaintext, char keyTable[SIZE][SIZE]);
+
+int main() {
+    char key[100], plaintext[500], ciphertext[500], decryptedtext[500];
+    char keyTable[SIZE][SIZE];
+    int choice;
+    
+    printf("=== PLAYFAIR CIPHER IMPLEMENTATION ===\n\n");
+    
+    // Get the key from user
+    printf("Enter the key: ");
+    fgets(key, sizeof(key), stdin);
+    key[strcspn(key, "\n")] = 0; // Remove newline
+    
+    // Generate the key table
+    generateKeyTable(key, keyTable);
+    
+    printf("\nGenerated Key Table (5x5):\n");
+    for(int i = 0; i < SIZE; i++) {
+        for(int j = 0; j < SIZE; j++) {
+            printf("%c ", keyTable[i][j]);
+        }
+        printf("\n");
+    }
+    
+    printf("\n1. Encrypt\n2. Decrypt\n");
+    printf("Enter your choice (1 or 2): ");
+    scanf("%d", &choice);
+    getchar(); // Consume newline
+    
+    if(choice == 1) {
+        printf("\nEnter the plaintext: ");
+        fgets(plaintext, sizeof(plaintext), stdin);
+        plaintext[strcspn(plaintext, "\n")] = 0;
+        
+        encrypt(plaintext, ciphertext, keyTable);
+        printf("\nEncrypted text: %s\n", ciphertext);
+    }
+    else if(choice == 2) {
+        printf("\nEnter the ciphertext: ");
+        fgets(ciphertext, sizeof(ciphertext), stdin);
+        ciphertext[strcspn(ciphertext, "\n")] = 0;
+        
+        decrypt(ciphertext, decryptedtext, keyTable);
+        printf("\nDecrypted text: %s\n", decryptedtext);
+    }
+    else {
+        printf("Invalid choice!\n");
+    }
+    
+    return 0;
+}
+
+// Prepare the text (convert to uppercase, replace J with I, remove non-alphabetic)
+void prepareText(char *text, char *prepared) {
+    int i, j = 0;
+    char ch;
+    
+    for(i = 0; text[i] != '\0'; i++) {
+        ch = toupper(text[i]);
+        
+        if(ch >= 'A' && ch <= 'Z') {
+            // Replace J with I
+            if(ch == 'J')
+                ch = 'I';
+            prepared[j++] = ch;
+        }
+    }
+    prepared[j] = '\0';
+}
+
+// Generate the 5x5 key table
+void generateKeyTable(char *key, char keyTable[SIZE][SIZE]) {
+    bool used[26] = {false};
+    char preparedKey[200];
+    int i, j, k = 0;
+    char ch;
+    
+    // Prepare the key (remove duplicates, convert to uppercase)
+    prepareText(key, preparedKey);
+    
+    // Mark 'J' as used (since we treat J as I)
+    used['J' - 'A'] = true;
+    
+    // First, fill the key table with key letters
+    for(i = 0; preparedKey[i] != '\0'; i++) {
+        ch = preparedKey[i];
+        int index = ch - 'A';
+        
+        if(!used[index]) {
+            keyTable[k / SIZE][k % SIZE] = ch;
+            used[index] = true;
+            k++;
+        }
+    }
+    
+    // Then fill the remaining letters of alphabet
+    for(ch = 'A'; ch <= 'Z'; ch++) {
+        int index = ch - 'A';
+        
+        if(!used[index]) {
+            keyTable[k / SIZE][k % SIZE] = ch;
+            k++;
+        }
+    }
+}
+
+// Find position of a character in the key table
+void findPosition(char keyTable[SIZE][SIZE], char ch, int *row, int *col) {
+    int i, j;
+    
+    for(i = 0; i < SIZE; i++) {
+        for(j = 0; j < SIZE; j++) {
+            if(keyTable[i][j] == ch) {
+                *row = i;
+                *col = j;
+                return;
+            }
+        }
+    }
+}
+
+// Encrypt a pair of characters
+void encryptPair(char keyTable[SIZE][SIZE], char a, char b, char *encrypted) {
+    int row1, col1, row2, col2;
+    
+    findPosition(keyTable, a, &row1, &col1);
+    findPosition(keyTable, b, &row2, &col2);
+    
+    if(row1 == row2) {
+        // Same row - shift right
+        encrypted[0] = keyTable[row1][(col1 + 1) % SIZE];
+        encrypted[1] = keyTable[row2][(col2 + 1) % SIZE];
+    }
+    else if(col1 == col2) {
+        // Same column - shift down
+        encrypted[0] = keyTable[(row1 + 1) % SIZE][col1];
+        encrypted[1] = keyTable[(row2 + 1) % SIZE][col2];
+    }
+    else {
+        // Rectangle - swap columns
+        encrypted[0] = keyTable[row1][col2];
+        encrypted[1] = keyTable[row2][col1];
+    }
+}
+
+// Decrypt a pair of characters
+void decryptPair(char keyTable[SIZE][SIZE], char a, char b, char *decrypted) {
+    int row1, col1, row2, col2;
+    
+    findPosition(keyTable, a, &row1, &col1);
+    findPosition(keyTable, b, &row2, &col2);
+    
+    if(row1 == row2) {
+        // Same row - shift left
+        decrypted[0] = keyTable[row1][(col1 - 1 + SIZE) % SIZE];
+        decrypted[1] = keyTable[row2][(col2 - 1 + SIZE) % SIZE];
+    }
+    else if(col1 == col2) {
+        // Same column - shift up
+        decrypted[0] = keyTable[(row1 - 1 + SIZE) % SIZE][col1];
+        decrypted[1] = keyTable[(row2 - 1 + SIZE) % SIZE][col2];
+    }
+    else {
+        // Rectangle - swap columns
+        decrypted[0] = keyTable[row1][col2];
+        decrypted[1] = keyTable[row2][col1];
+    }
+}
+
+// Encrypt the plaintext
+void encrypt(char *plaintext, char *ciphertext, char keyTable[SIZE][SIZE]) {
+    char prepared[500];
+    char digraph[3];
+    int i, j = 0;
+    
+    // Prepare the plaintext
+    prepareText(plaintext, prepared);
+    
+    // Process the text in pairs
+    for(i = 0; prepared[i] != '\0'; i += 2) {
+        char first = prepared[i];
+        char second;
+        
+        // If we're at the last character or next char is same as current
+        if(prepared[i+1] == '\0' || prepared[i] == prepared[i+1]) {
+            if(prepared[i+1] == '\0') {
+                // Add 'X' at the end if odd length
+                second = 'X';
+                i--; // Adjust index to process correctly
+            }
+            else {
+                // Insert 'X' between duplicate letters
+                second = 'X';
+            }
+        }
+        else {
+            second = prepared[i+1];
+        }
+        
+        // Encrypt the pair
+        encryptPair(keyTable, first, second, digraph);
+        ciphertext[j++] = digraph[0];
+        ciphertext[j++] = digraph[1];
+    }
+    ciphertext[j] = '\0';
+}
+
+// Decrypt the ciphertext
+void decrypt(char *ciphertext, char *plaintext, char keyTable[SIZE][SIZE]) {
+    char prepared[500];
+    char digraph[3];
+    int i, j = 0;
+    
+    // Prepare the ciphertext
+    prepareText(ciphertext, prepared);
+    
+    // Process the text in pairs
+    for(i = 0; prepared[i] != '\0'; i += 2) {
+        if(prepared[i+1] == '\0')
+            break;
+            
+        decryptPair(keyTable, prepared[i], prepared[i+1], digraph);
+        plaintext[j++] = digraph[0];
+        plaintext[j++] = digraph[1];
+    }
+    plaintext[j] = '\0';
+}
+```
 
 
 
 
+## Output:
+```
+=== PLAYFAIR CIPHER IMPLEMENTATION ===
 
-Output:
+Enter the key: monarchy
+
+Generated Key Table (5x5):
+M O N A R
+C H Y B D
+E F G I K
+L P Q S T
+U V W X Z
+
+1. Encrypt
+2. Decrypt
+Enter your choice (1 or 2): 1
+
+Enter the plaintext: hello world
+
+Encrypted text: FNEVLNQIPI
+```
